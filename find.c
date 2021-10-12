@@ -3,38 +3,56 @@
 #include <stdlib.h>
 #include <dirent.h>
 #include <string.h>
-
+#include <sys/types.h>
+#include <unistd.h>
+#include <errno.h>
 
 //helper methods (unnamed so far)
-void recursiveFileSearch(char *startingpath){
-    int *myPointer; //cleared up my segmentation fault
-    myPointer = malloc(sizeof(int)); //tbh this cleared up my segmentation fault so idk
-    char path[500]; //allocating memory for files list.
+void recursiveFind(char *startingPath, char *enterPattern, size_t size){
+    char currentDIR[] = ".";
+    char prevDIR[] = "..";
+    DIR *dir = opendir(startingPath);
     struct dirent *datapath;
-    DIR *dir = opendir(startingpath);
+    size_t i = strlen(startingPath);
+    char *tag;
 
-    if(!dir){
-        return; //if dir cannot open.
+    if(dir == NULL){//if dir cannot open, exit
+        fprintf(stderr, "No file found in directory: %s, %s\n", startingPath,strerror(errno));
+        return;
     }
     while((datapath = readdir(dir)) != NULL){
-        if(strcmp(datapath->d_name, ".") !=0 && strcmp(datapath->d_name, "..") !=0){
-            printf("%s\n", datapath ->d_name);
-
-            strcpy(path,startingpath);
-            strcat(path,"/");
-            strcat(path, datapath ->d_name);
+        tag = datapath ->d_name;
+        if(datapath ->d_type == DT_DIR){
+            if(!strcmp(tag, currentDIR) || !strcmp(tag, prevDIR)){
+                continue;
+            }
+            else{
+                startingPath[i] = '/';
+                strcpy(startingPath + i + 1, tag);
+                if(strstr(startingPath,enterPattern) != NULL){
+                    printf("%s\n", startingPath);
+                }
+                    recursiveFind(startingPath,enterPattern,size);
+                    startingPath[i] = '\0';
+            }
+        }
+        else{
+            if(strstr(tag, enterPattern) != NULL){
+                printf("%s/%s\n",startingPath,tag);
+            }
         }
     }
-    free(myPointer); //frees up memory
     closedir(dir); //closes directory
 }
+    
 
 //main method
 int main(int argc, char *argv[]){
-    char enterPattern[] = "Please enter pattern into command line: "; //tells user to input
-    char pattern[10]; //allocating memory for amount of char's in "pattern".
-    printf("%s", enterPattern); //printing enterPattern[].
-    scanf("%s", argv[1]); // taking input from command line
-    recursiveFileSearch(argv[1]); //calls function above.
+    //variables
+    char path[1024] = ".";
+    char *pattern = argv[1];
+    //commands
+    recursiveFind(path, pattern, sizeof path); //calls function above.
     return 0;
+    
 }
